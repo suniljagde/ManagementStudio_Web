@@ -33,7 +33,8 @@ namespace ManagementStudio_Web.Controllers
         {
             lstMcUser = objBoCommon.GetAllUser();
             return View(lstMcUser);
-        }*/
+        }
+        */
 
         [Route("list")]
         public IActionResult ListUsers() => View(objBoCommon.GetAllUser());
