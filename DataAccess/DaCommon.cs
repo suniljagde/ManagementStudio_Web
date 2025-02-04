@@ -62,6 +62,36 @@ namespace DataAccess
             Password = "super@123",
             IsActive = true
         };
+        public List<McUser> GetAllUsers() => new List<McUser>()
+            {
+                new McUser()
+                {
+                    Id = 1001,
+                    Username = "Sunil Jagde",
+                    Email = "sunil.admin@gyan.co.in",
+                    Address = "Sakinaka",
+                    Password = "super@123",
+                    IsActive = true
+                },
+                new McUser()
+                {
+                    Id = 1002,
+                    Username = "Kunal Mendarkar",
+                    Email = "kunal.admin@gyan.co.in",
+                    Address = "Kamothe",
+                    Password = "super@123",
+                    IsActive = false
+                },
+                new McUser()
+                {
+                    Id = 1001,
+                    Username = "Prince Gupta",
+                    Email = "prince.admin@gyan.co.in",
+                    Address = "Dahisar",
+                    Password = "super@123",
+                    IsActive = true
+                }
+            };
         #endregion
     }
 }

@@ -24,5 +24,6 @@ namespace BusinessObject
         */
 
         public McUser GetUser() => objDaCommon.GetUser();
+        public List<McUser> GetAllUser() => objDaCommon.GetAllUsers();
     }
 }

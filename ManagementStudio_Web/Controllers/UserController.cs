@@ -4,11 +4,13 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ManagementStudio_Web.Controllers
 {
+    [Route("user")]
     public class UserController : Controller
     {
         #region Global
         private BoCommon objBoCommon;
         private McUser objMcUser;
+        private List<McUser> lstMcUser;
         #endregion
 
         #region Constructor
@@ -16,6 +18,7 @@ namespace ManagementStudio_Web.Controllers
         {
             objBoCommon = new BoCommon();
             objMcUser = new McUser();
+            lstMcUser = new List<McUser>();
         }
         #endregion
 
@@ -24,5 +27,16 @@ namespace ManagementStudio_Web.Controllers
             objMcUser = objBoCommon.GetUser();
             return View(objMcUser);
         }
+
+        /*
+        public IActionResult ListUsers()
+        {
+            lstMcUser = objBoCommon.GetAllUser();
+            return View(lstMcUser);
+        }*/
+
+        [Route("list")]
+        public IActionResult ListUsers() => View(objBoCommon.GetAllUser());
+
     }
 }
