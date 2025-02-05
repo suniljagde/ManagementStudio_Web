@@ -4,7 +4,7 @@
     {
         public McUser()
         {
-            IsActive = true;
+            IsActive = true; // Setting up the default value
         }
 
         public int Id { get; set; }
