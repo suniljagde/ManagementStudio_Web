@@ -1,7 +1,10 @@
+using DataAccess;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddSingleton<DaCommon>();
 
 var app = builder.Build();
 

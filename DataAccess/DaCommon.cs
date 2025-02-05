@@ -1,97 +1,185 @@
 ﻿using MasterClass;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
+using System.Data;
 
 namespace DataAccess
 {
     public class DaCommon
     {
         #region GLobal
-        private McUser objMcUser;
+        private readonly string _connectionString;
+        private SqlConnection _sqlConnection;
+        private SqlCommand _sqlCommand;
+        private SqlDataAdapter _sqlDataAdapter;
+        private SqlDataReader _sqlDataReader;
         #endregion
 
         #region Constructor
-        public DaCommon()
+        public DaCommon(IConfiguration configuration)
         {
-            objMcUser = new McUser();
+            _connectionString = configuration.GetConnectionString("DatabaseConStr");
+            _sqlConnection = new SqlConnection(_connectionString);
         }
         #endregion
 
-        #region Method
-        /*
-        public McUser GetUser()
+        #region Sql Connection States
+        public void OpenConnection()
         {
-            /*
-            McUser usr = new McUser();
-            usr.Id = 1001;
-            usr.Username = "Sunil Jagde";
-            usr.Email = "sunil.admin@gyan.co.in";
-            usr.Address = "Sakinaka";
-            usr.Password = "super@123";
-            usr.IsActive = true;
-
-            McUser usr = new McUser()
+            try
             {
-                Id = 1,
-                Username = "Test",
-                Email = "Test",
-                Address = "Test",
-                Password = "Test",
-                IsActive = true
-            };
-
-            return usr;
-
-            return new McUser()
+                if(_sqlConnection.State == ConnectionState.Closed)
+                {
+                    _sqlConnection.Open();
+                }
+            }
+            catch(Exception ex)
             {
-                Id = 1001,
-                Username = "Sunil Jagde",
-                Email = "sunil.admin@gyan.co.in",
-                Address = "Sakinaka",
-                Password = "super@123",
-                IsActive = true
-            };
-        }*/
+                throw new Exception("Error opening database connection", ex);
+            }
+        }
+
+        public void CloseConnection()
+        {
+            if(_sqlConnection.State == ConnectionState.Open)
+            {
+                _sqlConnection.Close();
+            }
+        }
         #endregion
 
-        #region Shorthand_Methods
-        public McUser GetUser() => new McUser()
-        {
-            Id = 1001,
-            Username = "Sunil Jagde",
-            Email = "sunil.admin@gyan.co.in",
-            Address = "Sakinaka",
-            Password = "super@123",
-            IsActive = true
-        };
-        public List<McUser> GetAllUsers() => new List<McUser>()
+        #region Dynamic Parameter Method
+        public SqlParameter CreateParameter(string name, object value, SqlDbType type, ParameterDirection direction = ParameterDirection.Input) =>
+            new SqlParameter
             {
-                new McUser()
-                {
-                    Id = 1001,
-                    Username = "Sunil Jagde",
-                    Email = "sunil.admin@gyan.co.in",
-                    Address = "Sakinaka",
-                    Password = "super@123",
-                    IsActive = true
-                },
-                new McUser()
-                {
-                    Id = 1002,
-                    Username = "Kunal Mendarkar",
-                    Email = "kunal.admin@gyan.co.in",
-                    Address = "Kamothe",
-                    Password = "super@123",
-                    IsActive = false
-                },
-                new McUser()
-                {
-                    Id = 1001,
-                    Username = "Prince Gupta",
-                    Email = "prince.admin@gyan.co.in",
-                    Address = "Dahisar",
-                    Password = "super@123",
-                    IsActive = true
-                }
+                ParameterName = name,
+                Value = value ?? DBNull.Value,
+                SqlDbType = type,
+                Direction = direction
             };
+        #endregion
+
+        #region Get All Records
+        public DataTable GetAllRecords(string storedProcedure, List<SqlParameter>? parameters = null)
+        {
+            DataTable dataTable = new DataTable();
+            try
+            {
+                OpenConnection();
+                _sqlCommand = new SqlCommand(storedProcedure, _sqlConnection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+
+                if(parameters != null)
+                {
+                    _sqlCommand.Parameters.AddRange(parameters.ToArray());
+                }
+
+                _sqlDataAdapter = new SqlDataAdapter(_sqlCommand);
+                _sqlDataAdapter.Fill(dataTable);
+            }
+            catch(Exception ex)
+            {
+                throw new Exception("Error fetching records", ex);
+            }
+            finally
+            {
+                CloseConnection();
+            }
+            return dataTable;
+        }
+        #endregion
+
+        #region Get Records By Id
+        public DataRow GetRecordById(string storedProcedure, List<SqlParameter> parameters)
+        {
+            try
+            {
+                DataTable dataTable = GetAllRecords(storedProcedure, parameters);
+                return dataTable.Rows.Count > 0 ? dataTable.Rows[0] : null;
+            }
+            catch(Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
+        }
+        #endregion
+
+        #region Execute Non Query and Get All Records of Table as DataTable
+        public int ExecuteNonQuery(string storedProcedure, List<SqlParameter> parameters)
+        {
+            int result = 0;
+            try
+            {
+                OpenConnection();
+                _sqlCommand = new SqlCommand(storedProcedure, _sqlConnection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                if(parameters != null)
+                {
+                    _sqlCommand.Parameters.AddRange(parameters.ToArray());
+                }
+                result = _sqlCommand.ExecuteNonQuery();
+            }
+            catch(Exception ex)
+            {
+                throw new Exception("Error executing command", ex);
+            }
+            finally
+            {
+                CloseConnection();
+            }
+            return result;
+        }
+        #endregion
+
+        #region Execute Scalar and Get Single Record
+        public object ExecuteScalar(string storedProcedure, List<SqlParameter> parameters)
+        {
+            object result;
+            try
+            {
+                OpenConnection();
+                _sqlCommand = new SqlCommand(storedProcedure, _sqlConnection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                if(parameters != null)
+                {
+                    _sqlCommand.Parameters.AddRange(parameters.ToArray());
+                }
+                result = _sqlCommand.ExecuteScalar();
+            }
+            catch(Exception ex)
+            {
+                throw new Exception("Error executing scalar command", ex);
+            }
+            finally
+            {
+                CloseConnection();
+            }
+            return result;
+        }
+        #endregion
+
+        #region Object Destructor
+        public void Dispose()
+        {
+            if(_sqlConnection != null)
+            {
+                _sqlConnection.Dispose();
+            }
+            if(_sqlCommand != null)
+            {
+                _sqlCommand.Dispose();
+            }
+            if(_sqlDataAdapter != null)
+            {
+                _sqlDataAdapter.Dispose();
+            }
+        }
         #endregion
     }
 }

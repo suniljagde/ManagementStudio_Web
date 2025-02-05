@@ -1,0 +1,156 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
+
+namespace DataAccess
+{
+    public class DaCommon : IDisposable
+    {
+        private readonly string _connectionString;
+        private SqlConnection _sqlConnection;
+        private SqlCommand _sqlCommand;
+        private SqlDataAdapter _sqlDataAdapter;
+        private SqlDataReader _sqlDataReader;
+
+        public DaCommon(IConfiguration configuration)
+        {
+            _connectionString = configuration.GetConnectionString("DefaultConnection");
+            _sqlConnection = new SqlConnection(_connectionString);
+        }
+
+        public void OpenConnection()
+        {
+            try
+            {
+                if (_sqlConnection.State == ConnectionState.Closed)
+                {
+                    _sqlConnection.Open();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error opening database connection", ex);
+            }
+        }
+
+        public void CloseConnection()
+        {
+            if (_sqlConnection.State == ConnectionState.Open)
+            {
+                _sqlConnection.Close();
+            }
+        }
+
+        public SqlParameter CreateParameter(string name, object value, SqlDbType type, ParameterDirection direction = ParameterDirection.Input)
+        {
+            return new SqlParameter
+            {
+                ParameterName = name,
+                Value = value ?? DBNull.Value,
+                SqlDbType = type,
+                Direction = direction
+            };
+        }
+
+        public DataTable GetAllRecords(string storedProcedure, List<SqlParameter> parameters = null)
+        {
+            DataTable dataTable = new DataTable();
+            try
+            {
+                OpenConnection();
+                _sqlCommand = new SqlCommand(storedProcedure, _sqlConnection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+
+                if (parameters != null)
+                {
+                    _sqlCommand.Parameters.AddRange(parameters.ToArray());
+                }
+
+                _sqlDataAdapter = new SqlDataAdapter(_sqlCommand);
+                _sqlDataAdapter.Fill(dataTable);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error fetching records", ex);
+            }
+            finally
+            {
+                CloseConnection();
+            }
+            return dataTable;
+        }
+
+        public DataRow GetRecordById(string storedProcedure, List<SqlParameter> parameters)
+        {
+            DataTable dataTable = GetAllRecords(storedProcedure, parameters);
+            return dataTable.Rows.Count > 0 ? dataTable.Rows[0] : null;
+        }
+
+        public int ExecuteNonQuery(string storedProcedure, List<SqlParameter> parameters)
+        {
+            int result = 0;
+            try
+            {
+                OpenConnection();
+                _sqlCommand = new SqlCommand(storedProcedure, _sqlConnection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                if (parameters != null)
+                {
+                    _sqlCommand.Parameters.AddRange(parameters.ToArray());
+                }
+                result = _sqlCommand.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error executing command", ex);
+            }
+            finally
+            {
+                CloseConnection();
+            }
+            return result;
+        }
+
+        public object ExecuteScalar(string storedProcedure, List<SqlParameter> parameters)
+        {
+            object result;
+            try
+            {
+                OpenConnection();
+                _sqlCommand = new SqlCommand(storedProcedure, _sqlConnection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                if (parameters != null)
+                {
+                    _sqlCommand.Parameters.AddRange(parameters.ToArray());
+                }
+                result = _sqlCommand.ExecuteScalar();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error executing scalar command", ex);
+            }
+            finally
+            {
+                CloseConnection();
+            }
+            return result;
+        }
+
+        public void Dispose()
+        {
+            if (_sqlConnection != null) _sqlConnection.Dispose();
+
+            if (_sqlCommand != null) _sqlCommand.Dispose();
+
+            if (_sqlDataAdapter != null) _sqlDataAdapter.Dispose();
+        }
+    }
+}
