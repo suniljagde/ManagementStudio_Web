@@ -1,4 +1,70 @@
-﻿using System;
+﻿-- Create Table for McUser
+CREATE TABLE Users (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Username NVARCHAR(50) UNIQUE NOT NULL,
+    Password NVARCHAR(255) NOT NULL,
+    Email NVARCHAR(100) UNIQUE NOT NULL,
+    Address NVARCHAR(255) NULL,
+    IsActive BIT DEFAULT 1
+);
+
+-- Stored Procedure for User Registration
+CREATE PROCEDURE usp_RegisterUser
+    @Username NVARCHAR(50),
+    @Password NVARCHAR(255),
+    @Email NVARCHAR(100),
+    @Address NVARCHAR(255) NULL
+AS
+BEGIN
+    BEGIN TRY
+        IF EXISTS (SELECT 1 FROM Users WHERE Username = @Username OR Email = @Email)
+        BEGIN
+            THROW 50001, 'Username or Email already exists.', 1;
+        END
+
+        INSERT INTO Users (Username, Password, Email, Address, IsActive)
+        VALUES (@Username, @Password, @Email, @Address, 1);
+    END TRY
+    BEGIN CATCH
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        THROW 50002, @ErrorMessage, 1;
+    END CATCH;
+END;
+
+-- Stored Procedure for User Login
+CREATE PROCEDURE usp_LoginUser
+    @Username NVARCHAR(50),
+    @Password NVARCHAR(255)
+AS
+BEGIN
+    BEGIN TRY
+        DECLARE @UserId INT;
+        DECLARE @IsActive BIT;
+
+        SELECT @UserId = Id, @IsActive = IsActive FROM Users WHERE Username = @Username AND Password = @Password;
+
+        IF @UserId IS NULL
+        BEGIN
+            THROW 50003, 'Invalid username or password.', 1;
+        END
+
+        IF @IsActive = 0
+        BEGIN
+            THROW 50004, 'User account is inactive.', 1;
+        END
+
+        SELECT Id, Username, Email, Address FROM Users WHERE Id = @UserId;
+    END TRY
+    BEGIN CATCH
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        THROW 50005, @ErrorMessage, 1;
+    END CATCH;
+END;
+
+
+-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
